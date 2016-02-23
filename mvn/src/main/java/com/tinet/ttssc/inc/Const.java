@@ -14,4 +14,5 @@ public class Const {
 	public static String DYNAMODB_PRIMARY_ID = "key";
 	public static String AWS_TTS_CACHE_URL_POSTFIX = "s3-website.cn-north-1.amazonaws.com.cn";
 	
+	public static Integer REQUEST_RESULT_TIMEOUT=-999;
 }

@@ -144,7 +144,7 @@ public class TtssEngine extends Thread{
 							TtssEngine.pushRequest(ttsRequest);
 						}
 					}else{
-						ttsRequest.setResult(-999);//没有找到server
+						ttsRequest.setResult(Const.REQUEST_RESULT_TIMEOUT);//没有找到server
 						ttsRequest.setTtsServer(null);
 						ttsRequest.setEndTime(new Date());
 						ttsRequest.setDone(false);
