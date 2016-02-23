@@ -64,40 +64,15 @@ public class Daemon implements javax.servlet.ServletContextListener {
 		//初始化AWS
 		AwsS3Service.init();
 		AwsDynamoDbService.init();
-		//初始化目录
-		String path = SystemSettingService.getSystemSetting(Const.TTS_CACHE_ABS_PATH).getValue();
-		if(StringUtil.isNotEmpty(path)){
-			String cmd= "/bin/mkdir -p " + path;
-			System.out.println("创建目录 cmd=[" + cmd + "]");
-			SystemCmd.executeCmd(cmd);
-			for(char i='a'; i<= 'f'; i++){
-				for(int j=0; j<= 9; j++){
-					cmd = "/bin/mkdir -p " + path + "/" + i + j;
-					System.out.println("创建目录 cmd=[" + cmd + "]");
-					SystemCmd.executeCmd(cmd);
-				}
-				for(char j='a'; j<= 'f'; j++){
-					cmd = "/bin/mkdir -p " + path + "/" + i + j;
-					System.out.println("创建目录 cmd=[" + cmd + "]");
-					SystemCmd.executeCmd(cmd);
-				}
-			}
-			for(int i=0; i<= 9; i++){
-				for(int j=0; j<= 9; j++){
-					cmd = "/bin/mkdir -p " + path + "/" + i + j;
-					System.out.println("创建目录 cmd=[" + cmd + "]");
-					SystemCmd.executeCmd(cmd);
-				}
-				for(char j='a'; j<= 'f'; j++){
-					cmd = "/bin/mkdir -p " + path + "/" + i + j;
-					System.out.println("创建目录 cmd=[" + cmd + "]");
-					SystemCmd.executeCmd(cmd);
-				}
-			}
-		}
-		
 		//初始化ttsServer
 		Macro.ttsServers = TtsServerService.init();
+		//初始化目录
+		String pathSetting = SystemSettingService.getSystemSetting(Const.TTS_CACHE_ABS_PATH).getValue();
+		if(StringUtil.isNotEmpty(pathSetting)){
+			mkdir(pathSetting, 1);//普通话
+			mkdir(pathSetting, 2);//粤语
+		}
+		
 		//启动转换线程
 		for(TtsServer server: Macro.ttsServers){
 			if(server.getActive() == 1){
@@ -122,7 +97,36 @@ public class Daemon implements javax.servlet.ServletContextListener {
 		System.out.println("开启清理过期数据线程，每天清理一次");
 		return;
 	}
-
+	public static void mkdir(String path, Integer vid){
+		path = path + "/" + vid;//创建普通话目录
+		String cmd= "/bin/mkdir -p " + path;
+		System.out.println("创建目录 cmd=[" + cmd + "]");
+		SystemCmd.executeCmd(cmd);
+		for(char i='a'; i<= 'f'; i++){
+			for(int j=0; j<= 9; j++){
+				cmd = "/bin/mkdir -p " + path + "/" + i + j;
+				System.out.println("创建目录 cmd=[" + cmd + "]");
+				SystemCmd.executeCmd(cmd);
+			}
+			for(char j='a'; j<= 'f'; j++){
+				cmd = "/bin/mkdir -p " + path + "/" + i + j;
+				System.out.println("创建目录 cmd=[" + cmd + "]");
+				SystemCmd.executeCmd(cmd);
+			}
+		}
+		for(int i=0; i<= 9; i++){
+			for(int j=0; j<= 9; j++){
+				cmd = "/bin/mkdir -p " + path + "/" + i + j;
+				System.out.println("创建目录 cmd=[" + cmd + "]");
+				SystemCmd.executeCmd(cmd);
+			}
+			for(char j='a'; j<= 'f'; j++){
+				cmd = "/bin/mkdir -p " + path + "/" + i + j;
+				System.out.println("创建目录 cmd=[" + cmd + "]");
+				SystemCmd.executeCmd(cmd);
+			}
+		}
+	}
 	/**
 	 * 关闭
 	 */

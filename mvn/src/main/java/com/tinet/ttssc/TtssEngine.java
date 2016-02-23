@@ -18,6 +18,7 @@ import com.tinet.ttssc.inc.Const;
 import com.tinet.ttssc.service.AwsDynamoDbService;
 import com.tinet.ttssc.service.AwsS3Service;
 import com.tinet.ttssc.service.SystemSettingService;
+import com.tinet.ttssc.util.DateUtil;
 
 
 public class TtssEngine extends Thread{
@@ -73,70 +74,81 @@ public class TtssEngine extends Thread{
 			try {
 				TtsRequest ttsRequest = queue.poll(10, TimeUnit.SECONDS);
 				if (ttsRequest != null ) {
-					if(ttsRequest.isValid(ttsServer)){//说明可以使用这个server转换
-						running = true;
-						dealCount.incrementAndGet();
-						threadDealCount++;
-						try{
-							ttsRequest.setTtsServer(ttsServer);
-							ttsRequest.setThreadId(threadId);
-							ttsRequest.setStartTime(new Date());
-							ttsRequest.setUuid(UUID.randomUUID().toString());
-							String fileName = SystemSettingService.getSystemSetting(Const.TTS_CACHE_ABS_PATH).getValue() + "/" + ttsRequest.getHash().substring(0,2) + "/" + ttsRequest.getHash() + ".wav";
-							int res = jni.request(ttsRequest.getText(), fileName, ttsServer.getIp(), ttsRequest.getSpeed().intValue(), ttsRequest.getVid().intValue(), ttsRequest.getVolume().intValue());
-							//System.out.println("jni.request ok res= " + res + " time=" + System.currentTimeMillis() + " thread:" + ttsRequest.getNotifyThread() + " ttsRequest:" + ttsRequest);
-							ttsRequest.setEndTime(new Date());
-							ttsRequest.setResult(res);
-							//存储到数据库日志中
-							TtsRequest.saveTtsLog(ttsRequest);
-							if (res !=0){
-								failCount.incrementAndGet();
-								threadFailCount++;
-								if(ttsRequest.getRetry() > 0){
-									ttsRequest.setRetry(ttsRequest.getRetry() - 1);
-									ttsRequest.removeValid(ttsServer);
-									if(ttsRequest.hasValid()){//如果还有有效的server再丢进去，否则就丢弃了
-										TtssEngine.pushRequest(ttsRequest);
+					//加上超时后退出机制，防止因为没有找到server最后一直卡在queue里面的情况。
+					if(DateUtil.diffSecond(ttsRequest.getRequestTime(), new Date()) < ttsRequest.getTimeout()){
+						if(ttsRequest.isValid(ttsServer)){//说明可以使用这个server转换
+							running = true;
+							dealCount.incrementAndGet();
+							threadDealCount++;
+							try{
+								ttsRequest.setTtsServer(ttsServer);
+								ttsRequest.setThreadId(threadId);
+								ttsRequest.setStartTime(new Date());
+								ttsRequest.setUuid(UUID.randomUUID().toString());
+								String fileName = SystemSettingService.getSystemSetting(Const.TTS_CACHE_ABS_PATH).getValue() + "/" + ttsRequest.getVid() + "/" + ttsRequest.getHash().substring(0,2) + "/" + ttsRequest.getHash() + ".wav";
+								int res = jni.request(ttsRequest.getText(), fileName, ttsServer.getIp(), ttsRequest.getSpeed().intValue(), ttsRequest.getVid().intValue(), ttsRequest.getVolume().intValue());
+								//System.out.println("jni.request ok res= " + res + " time=" + System.currentTimeMillis() + " thread:" + ttsRequest.getNotifyThread() + " ttsRequest:" + ttsRequest);
+								ttsRequest.setEndTime(new Date());
+								ttsRequest.setResult(res);
+								//存储到数据库日志中
+								TtsRequest.saveTtsLog(ttsRequest);
+								if (res !=0){
+									failCount.incrementAndGet();
+									threadFailCount++;
+									if(ttsRequest.getRetry() > 0){
+										ttsRequest.setRetry(ttsRequest.getRetry() - 1);
+										ttsRequest.removeValid(ttsServer);
+										if(ttsRequest.hasValid()){//如果还有有效的server再丢进去，否则就丢弃了
+											TtssEngine.pushRequest(ttsRequest);
+										}
+									}
+								}else{
+									boolean success = false;
+									File tmp = new File(fileName);
+									if(tmp.exists()){
+										FileInputStream fis = null;
+								        fis = new FileInputStream(tmp);
+								        Integer size = fis.available();
+								        System.out.println(fileName + " size=" + size);
+								        if(size > 44){
+								    		String s3FileName = ttsRequest.getVid() + "/" + ttsRequest.getHash().substring(0,2) + "/" + ttsRequest.getHash() + ".wav";
+								    		if(AwsS3Service.upload(fileName, s3FileName)){
+								    			long createTime = new Date().getTime()/1000; 
+								    			HashMap<String, Object> params = new HashMap<String, Object>();
+								    			params.put("createTime", createTime);
+								    			params.put("text", ttsRequest.getText());
+								    			params.put("vid", ttsRequest.getVid());
+								    			String key = ttsRequest.getVid() + "-" + ttsRequest.getHash();
+								    			if(AwsDynamoDbService.createItem(Const.DYNAMODB_TABLE, Const.DYNAMODB_PRIMARY_ID, key, params)){
+								    				success = true;
+								    			}
+								    		}
+								        }
+									    fis.close();
+									    tmp.delete();
+									}
+									synchronized (ttsRequest.getNotifyThread()) {
+										ttsRequest.setDone(success);
+										ttsRequest.getNotifyThread().notifyAll();
 									}
 								}
-							}else{
-								boolean success = false;
-								File tmp = new File(fileName);
-								if(tmp.exists()){
-									FileInputStream fis = null;
-							        fis = new FileInputStream(tmp);
-							        Integer size = fis.available();
-							        System.out.println(fileName + " size=" + size);
-							        if(size > 44){
-							    		String s3FileName = ttsRequest.getHash().substring(0,2) + "/" + ttsRequest.getHash() + ".wav";
-							    		if(AwsS3Service.upload(fileName, s3FileName)){
-							    			long createTime = new Date().getTime()/1000; 
-							    			HashMap<String, Object> params = new HashMap<String, Object>();
-							    			params.put("createTime", createTime);
-							    			params.put("text", ttsRequest.getText());
-							    			if(AwsDynamoDbService.createItem(Const.DYNAMODB_TABLE, Const.DYNAMODB_PRIMARY_ID, ttsRequest.getHash(), params)){
-							    				success = true;
-							    			}
-							    		}
-							        }
-								    fis.close();
-								    tmp.delete();
-								}
-								synchronized (ttsRequest.getNotifyThread()) {
-									ttsRequest.setDone(success);
-									ttsRequest.getNotifyThread().notifyAll();
-								}
 							}
+							catch (Exception e){
+								e.printStackTrace();
+							}
+							finally{
+								running = false;
+							}
+						}else {
+							//说明这个server试过了，换下一个
+							TtssEngine.pushRequest(ttsRequest);
 						}
-						catch (Exception e){
-							e.printStackTrace();
-						}
-						finally{
-							running = false;
-						}
-					}else {
-						//说明这个server试过了，换下一个
-						TtssEngine.pushRequest(ttsRequest);
+					}else{
+						ttsRequest.setResult(-999);//没有找到server
+						ttsRequest.setTtsServer(null);
+						ttsRequest.setEndTime(new Date());
+						ttsRequest.setDone(false);
+						TtsRequest.saveTtsLog(ttsRequest);
 					}
 				}
 			}catch (Exception e) {
