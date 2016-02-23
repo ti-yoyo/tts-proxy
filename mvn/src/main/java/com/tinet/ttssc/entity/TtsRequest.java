@@ -43,6 +43,7 @@ public class TtsRequest implements Serializable, Comparable<TtsRequest>{
 	private Integer redirect;
 	private Integer sync;
 	private boolean done;
+	private Integer timeout;
 	
 	public String getText() {
 		return text;
@@ -191,6 +192,13 @@ public class TtsRequest implements Serializable, Comparable<TtsRequest>{
 	public void setSync(Integer sync) {
 		this.sync = sync;
 	}
+	
+	public Integer getTimeout() {
+		return timeout;
+	}
+	public void setTimeout(Integer timeout) {
+		this.timeout = timeout;
+	}
 	public boolean isValid(TtsServer ttsServer){
 		if(validServer.contains(ttsServer)){
 			boolean vidValid = false;
@@ -200,7 +208,7 @@ public class TtsRequest implements Serializable, Comparable<TtsRequest>{
 				}else{
 					vidValid = false;
 				}
-			}else if(vid==3){//粤语
+			}else if(vid==2){//粤语
 				if (ttsServer.getVid().equals(2) || ttsServer.getVid().equals(3)){
 					vidValid = true;
 				}else{

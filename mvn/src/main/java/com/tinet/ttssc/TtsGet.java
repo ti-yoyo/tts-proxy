@@ -129,7 +129,7 @@ public class TtsGet extends HttpServlet {
 			if(vid == 1 ||  vid == 3){
 				ttsRequest.setVid(vid);
 			}else{
-				out.append("vid只能为1（普通话）或者3（粤语）");
+				out.append("vid只能为1（普通话）或者2（粤语）");
 				out.flush();
 				out.close();
 				return;
@@ -155,10 +155,8 @@ public class TtsGet extends HttpServlet {
 		ttsRequest.setRequestTime(new Date());
 		ttsRequest.setText(text);
 		ttsRequest.setHash(MD5Encoder.encode(text));
-		
-		
-		String fileName = SystemSettingService.getSystemSetting(Const.TTS_CACHE_ABS_PATH).getValue() + "/" + ttsRequest.getHash().substring(0,2) + "/" + ttsRequest.getHash() + ".wav"; 
-		List<JSONObject> list = AwsDynamoDbService.query(Const.DYNAMODB_TABLE, Const.DYNAMODB_PRIMARY_ID, ttsRequest.getHash());
+		String key = ttsRequest.getVid() + "-" + ttsRequest.getHash();
+		List<JSONObject> list = AwsDynamoDbService.query(Const.DYNAMODB_TABLE, Const.DYNAMODB_PRIMARY_ID, key);
 		if(list.size() > 0){
 			ttsRequest.setStartTime(new Date());
 			ttsRequest.setHitCache(1);
@@ -200,7 +198,7 @@ public class TtsGet extends HttpServlet {
 			if(ttsRequest.isDone()){
 				String bucketName = SystemSettingService.getSystemSetting(Const.S3_BUCKET).getValue();
 				
-				String webfileName = "http://" + bucketName + "." + Const.AWS_TTS_CACHE_URL_POSTFIX + "/" + ttsRequest.getHash().substring(0,2) + "/" + ttsRequest.getHash() + ".wav";
+				String webfileName = "http://" + bucketName + "." + Const.AWS_TTS_CACHE_URL_POSTFIX + "/" + ttsRequest.getVid() + "/" + ttsRequest.getHash().substring(0,2) + "/" + ttsRequest.getHash() + ".wav";
 				//System.out.println("合成完成，文件："+webfileName + "时间=" + System.currentTimeMillis() + " thread:" + Thread.currentThread());
 				//System.out.println("合成完成，文件绝对路径："+fileName);
 	    		
