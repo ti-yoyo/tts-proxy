@@ -217,9 +217,15 @@ public class TtsGet extends HttpServlet {
 				out.close();
 			}
 		}else{
-			out.append("success");
-			out.flush();
-			out.close();
+			if(ttsRequest.isDone()){
+				out.append("success");
+				out.flush();
+				out.close();
+			}else{
+				out.append("合成超时");
+				out.flush();
+				out.close();
+			}
 		}
 
 	}
