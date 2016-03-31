@@ -69,7 +69,7 @@ public class TtssEngine extends Thread{
 	}
 	public void run(){
 		terminated = false;
-		logger.error("TTSSC engine start server=" + ttsServer.getIp() + " threadId=" + threadId);
+		logger.info("TTSSC engine start server=" + ttsServer.getIp() + " threadId=" + threadId);
 		while (!terminated) {
 			try {
 				TtsRequest ttsRequest = queue.poll(10, TimeUnit.SECONDS);
@@ -153,10 +153,10 @@ public class TtssEngine extends Thread{
 				}
 			}catch (Exception e) {
 				e.printStackTrace();
-				logger.error("Error accours when polling webCallQueue event!");
+				logger.error("Error accours when polling TTS Queue!");
 			}
 		}//end while
-		logger.error("webcall engine terminated!");
+		logger.error("TTS engine terminated!");
 	}
 	public void shutDown(){
 		terminated = true;

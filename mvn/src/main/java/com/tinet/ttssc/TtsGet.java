@@ -81,6 +81,8 @@ public class TtsGet extends HttpServlet {
 		if(StringUtil.isNotEmpty(timeoutStr)){
 			timeout = Integer.parseInt(timeoutStr);
 		}
+		ttsRequest.setTimeout(timeout);
+		
 		String speedStr	= request.getParameter("speed");
 		if(StringUtil.isNotEmpty(speedStr) && StringUtil.isNumber(speedStr)){
 			Integer speed = Integer.parseInt(speedStr);
